@@ -1,7 +1,10 @@
 import flet as ft
-import start_mine
 from threading import Timer
+
 # ! Дальше бога нет!!!!!
+
+# ⸸ Domine Deus salve hanc animam peccatricem a peccatis et reticulis neural ⸸
+
 def create_image_card(url, caption="ёу", on_click=None):
     caption_container = ft.Container(
         content=ft.Text(caption, size=19, text_align=ft.TextAlign.CENTER),
@@ -103,3 +106,8 @@ def set_opacity(container, opacity):
     container.update()
 
 ft.app(hello_page)
+
+
+
+
+
