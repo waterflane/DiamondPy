@@ -1,66 +1,55 @@
-# def start(name, version ....) #$ Кирилл, я тебе сделал этот файл, 
-    # (запуск майна)            #$ тут весь бекенд фигачь
-# def download_version(version, ....):
-    # (ну ты понял)
-
-# ещё одного кода от нейронки я не выдержу
-
 import minecraft_launcher_lib as mll
 import subprocess
+import elyby_api
+import os
+
+# Для SettingInfo.txt:
+#     1 - директория майна
+#     2 - ник
+#     3 - uuid
+#     4 - use api&
 
 def read_settings():
     file = open("resource/data/SettingInfo", "r")
-    dir = file.readline(0)
-    un = file.readline(1)
-    return dir, un
+    Nl = []
+    for i in range(len(file)):
+        Nl = file.readline(i)
+    return Nl
 
-def first_launch():
+def first_launch(system_launch, username='Player'):
     minecraft_directory = mll.utils.get_minecraft_directory()
-    username = '123' #Сделай тут юзернейм
 
-    file = open("resource/data/SettingInfo", "w") 
-    file.writelines(f'{minecraft_directory} \n')
-    file.writelines(f'{username}')
+    if system_launch == 'offline':
+        file = open("resource/data/SettingInfo", "w") 
+        #-----------------дирректория-----------ник------uuid---use uuid 
+        file.write(f'{minecraft_directory}\n{username}\n{None}\n{False}')
+    if system_launch == 'ely':
+        uuid = 0
 
-def settings():
+        file = open("resource/data/SettingInfo", "w")
+        #-----------------дирректория-----------ник------uuid---use uuid 
+        file.write(f'{minecraft_directory}\n{username}\n{uuid}\n{True}')
+
+def settings(new_dir=None, new_username=None, new_uuid=None, use_uuid=None):
     ...
 
-def start(version, uuid=''):
-    dir, username = read_settings()
+def start(version):
+    dir, username, uuid, uuid_use = read_settings()
     options = {
         'username': username,
-        'uuid': uuid
+        'uuid': uuid if uuid_use == 'True' else ''
     }
 
     subprocess.call(mll.command.get_minecraft_command(version=version, minecraft_directory=dir, options=options))
     
 
 def download_version(version='1.21.4', core='vanila'):
-    # это прогрес бар(на начальное время) когда будешь делать свой пб то эти 2 функции удали
-    def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r"):
-        percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-        filledLength = int(length * iteration // total)
-        bar = fill * filledLength + '-' * (length - filledLength)
-        print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end=printEnd)
-        if iteration == total:
-            print()
-
-    def maximum(max_value, value):
-        max_value[0] = value
-
     max_value = [0]
-    callback = {
-            "setStatus": lambda text: print(text, end='r'),
-            "setProgress": lambda value: printProgressBar(value, max_value[0]),
-            "setMax": lambda value: maximum(max_value, value)
-    }
-    dir, username = read_settings()
+    dir, username, uuid = read_settings()
 
     if core == 'vanila':
         print('начало загрузки')
-        mll.install.install_minecraft_version(versionid=version, minecraft_directory=dir, callback=callback,)
+        mll.install.install_minecraft_version(versionid=version, minecraft_directory=dir)
         print('успешно')
 
-# FirstLaunch()
-# download_version()
-start('1.21.4')
+# first_launch('ely')
