@@ -11,7 +11,7 @@ import webbrowser
 #   Ошибки: вернет 'требуется TOPT токен', если на аккаунте ely включена двухфакторная аутентификация
 #           вернет 'ошибка при входе', если сайт вернул не 200
 # start() - запускает майнкрафт поданой версии, если версии нет то установит, возращает 1 когда завершится
-# def download_version() - скачивает версии поданной версии и ядра(пока только ванила)
+# def download_version() - скачивает версии поданной версии и ядра, вернет: 1 если успешно установдена, 2 если уже установлена
 
 
 # Для SettingInfo.txt:
@@ -29,7 +29,9 @@ def read_settings():
     return Nl
 
 def first_launch(system_launch, login_if_ely=None, pass_if_ely=None, username_if_offline='Player'):
-    minecraft_directory = mll.utils.get_minecraft_directory()
+    if not os.path.exists('.minecraft'):
+        os.makedirs('.minecraft')
+    minecraft_directory = '.minecraft'
 
     file = open("resource/data/SettingInfo", "w") 
     #-----------------дирректория------------------ник----------uuid---use uuid 
@@ -81,38 +83,129 @@ def ely_by_auth(login=None, passw=None, TOTP=None):
 
 
 
-def start(version):
+def start(version, core='vanila'):
     dir, username, uuid, uuid_use = read_settings()
     options = {
         'username': username,
         'uuid': uuid if uuid_use == 'True' else ''
     }
-    try:
-        subprocess.call(mll.command.get_minecraft_command(version=version, minecraft_directory=dir, options=options))
-    except mll.exceptions.VersionNotFound:
-        download_version(version)
-        subprocess.call(mll.command.get_minecraft_command(version=version, minecraft_directory=dir, options=options))
-    return 1
-    
+    if core == 'vanila':
+        try:
+            subprocess.call(mll.command.get_minecraft_command(version=version, minecraft_directory=dir, options=options))
+        except mll.exceptions.VersionNotFound:
+            download_version(version)
+            subprocess.call(mll.command.get_minecraft_command(version=version, minecraft_directory=dir, options=options))
+        return 1
+    elif core == 'forge':
+        installed_versions = mll.utils.get_installed_versions(dir)
+        forge_version = ''
 
-def download_version(version='1.21.4', core='vanila'):
+        for i in installed_versions:
+            if version in i['id'] and '-forge-' in i['id']:
+                forge_version = i['id']
+                break
+
+        if forge_version == '':
+            download_version(version, 'forge')
+            for i in installed_versions:
+                if version in i['id'] and '-forge-' in i['id']:
+                    forge_version = i['id']
+                    break
+            subprocess.call(mll.command.get_minecraft_command(forge_version, dir, options))
+
+        subprocess.call(mll.command.get_minecraft_command(forge_version, dir, options))
+    elif core == 'fabric':
+        installed_versions = mll.utils.get_installed_versions(dir)
+        fabric_loader_version = mll.fabric.get_latest_loader_version()
+        print(installed_versions)
+
+        fabric_version_name = f"fabric-loader-{fabric_loader_version}-{version}"
+
+        fabric_installed = any(i["type"] == "fabric" and version in i["id"] for i in installed_versions)
+        if fabric_installed == True:
+            subprocess.call(mll.command.get_minecraft_command(fabric_version_name, dir, options))
+        else:
+            print(download_version(version, 'fabric'))
+
+            fabric_version_name = f"fabric-loader-{fabric_loader_version}-{version}"
+            subprocess.call(mll.command.get_minecraft_command(fabric_version_name, dir, options))
+
+def download_version(version='1.20.1', core='vanila'):
     dir, username, uuid, uuid_use = read_settings()
 
     if core == 'vanila':
+        installed_versions = mll.utils.get_installed_versions(dir)
+        for i in installed_versions:
+            if i['id'] == version:
+                return 2
+            
         print('начало загрузки')
+
         mll.install.install_minecraft_version(versionid=version, minecraft_directory=dir)
+
         print('успешно')
+        return 1
+    elif core == 'forge':
+        installed_versions = mll.utils.get_installed_versions(dir)
+        version_is_install = False
+        for i in installed_versions:
+            if i['id'] == version:
+                version_is_install = True
+            elif f'{version}-forge-' in i['id']:
+                return 2
+
+        if version_is_install == False:
+            print('начало загрузки')
+            mll.install.install_minecraft_version(versionid=version, minecraft_directory=dir)
+            print('успешно')
+
+        forge_versions = mll.forge.list_forge_versions()
+
+        forge_version = ''
+        for i in forge_versions:
+            if i.startswith(version):
+                forge_version = i
+                break
+
+        if forge_version is None:
+            return f'нет forge для {version}' 
+        else:
+            print(f"Установка Forge {forge_version} для {version}")
+            try:
+                mll.forge.install_forge_version(forge_version, dir)
+            except FileNotFoundError:
+                return 'нет java'
+            print('успешно')
+            return 1
+    elif core == 'fabric':
+        installed_versions = mll.utils.get_installed_versions(dir)
+        version_is_install = False
+        for i in installed_versions:
+            if i['id'] == version:
+                version_is_install = True
+            elif f'fabric_loader-' in i['id'] and version in i['id']:
+                return 2
+
+        if version_is_install == False:
+            print('начало загрузки')
+            mll.install.install_minecraft_version(versionid=version, minecraft_directory=dir)
+            print('успешно')
+
+        fabric_versions = mll.fabric.get_all_minecraft_versions()
+        is_fabric_versions = False
+
+        for i in fabric_versions:
+            if version in i['version'] and i['version'] == True:
+                is_fabric_versions = True
+                break
+
+        if is_fabric_versions:
+            return f'нет fabric для {version}' 
+        else:
+            fabric_loader_version = mll.fabric.get_latest_loader_version()
+            print(f"Установка Fabric {fabric_loader_version} для {version}")
+            mll.fabric.install_fabric(version, dir, fabric_loader_version,)
+            print("успешно")
+            return 1
     return 1
-
     
-
-def download_version(version='1.21.4', core='vanila'):
-    max_value = [0]
-    dir, username, uuid = read_settings()
-
-    if core == 'vanila':
-        print('начало загрузки')
-        mll.install.install_minecraft_version(versionid=version, minecraft_directory=dir)
-        print('успешно')
-
-# first_launch('ely')
