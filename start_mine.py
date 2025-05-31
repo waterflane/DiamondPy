@@ -36,6 +36,7 @@ def first_launch(system_launch, login_if_ely=None, pass_if_ely=None, username_if
     file = open("resource/data/SettingInfo", "w") 
     #-----------------дирректория------------------ник----------uuid---use uuid 
     file.write(f'{minecraft_directory}\n{username_if_offline}\n{None}\n{False}')
+    file.close()
 
     if system_launch == 'ely':
         ely_by_auth(login_if_ely, pass_if_ely)
