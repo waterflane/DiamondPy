@@ -19,7 +19,14 @@ import webbrowser
 #     2 - ник
 #     3 - uuid
 #     4 - use api?  
-
+def get_available_versions():
+    res = []
+    available_versions = mll.utils.get_version_list()
+    for version in available_versions:
+        version_id = version["id"]
+        version_type = version["type"]
+        res.append(f'{version_id} ({version_type})')
+    return res
 def read_settings():
     file = open("resource/data/SettingInfo", "r")
     Nl = file.readlines()
