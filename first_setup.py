@@ -150,10 +150,111 @@ def hello_page(page: ft.Page):
     page.add(main_container)
     # Обработчики для кнопок
     def select_ely(e):
+        def change_error_text_to_None(e):
+            textfield_2FA.error_text = None
         print("Выбрана авторизация через ely.by")
-        # Здесь будет переход на страницу авторификации
+        def back_to_main_menu_on_click(e):
+            page.clean()
+            page.add(main_container)
+            return 0
+        back_to_main_menu = ft.ElevatedButton(
+            text="Назад",
+            on_click=back_to_main_menu_on_click,
+        )
+        setup_text = ft.Text(
+            "Вход в ely.by", 
+            size=45,
+            text_align=ft.TextAlign.CENTER
+        )
+        setup_text_contai = ft.Container(
+            content=setup_text,
+            margin=ft.margin.only(top=-90)
+        )
+        login_ely_textfield = ft.TextField(
+            value='',
+            width=250,
+            label="Логин",
+            border_color=ft.Colors.BLUE_ACCENT_100,
+            on_change=lambda e: change_error_text_to_None(e)
+        )
+        login_ely_textfield_contai = ft.Container(
+            content=login_ely_textfield,
+            margin=ft.margin.only()
+        )
+        password_ely_textfield = ft.TextField(
+            value='',
+            width=250,
+            label="Пароль", password=True, can_reveal_password=True,
+            border_color=ft.Colors.BLUE_ACCENT_100,
+            on_change=lambda e: change_error_text_to_None(e)
+        )
+        password_ely_textfield_contai = ft.Container(
+            content=password_ely_textfield,
+            margin=ft.margin.only()
+        )
+        def page_2FA():
+            page.clean()
+            page.add(text_2FA_nada_contain,textfield_2FA,try_2FA_button_ely,back_button_ely)
+        def try_to_login_on_click(e):
+            try_login_ely = mine.ely_by_auth(login=login_ely_textfield.value,passw=password_ely_textfield.value)
+            if try_login_ely == "2FA protect":
+                page_2FA()
+            elif try_login_ely == "Invalid username or password":
+                page.open(ft.SnackBar(ft.Text(f"Ошибка входа, проверьте логин/пароль"),show_close_icon=True))
+        try_to_login_button = ft.ElevatedButton(
+            text="Войти",
+            color=ft.Colors.BLUE_ACCENT_100,
+            on_click=try_to_login_on_click,
+        )
+        text_2FA_nada = ft.Text(
+            "Введите 2FA код:", 
+            size=45,
+            text_align=ft.TextAlign.CENTER
+        )
+        text_2FA_nada_contain = ft.Container(
+            content=text_2FA_nada,
+            margin=ft.margin.only(top=-90)
+        )
+        textfield_2FA = ft.TextField(
+            value='',
+            width=250,
+            border_color=ft.Colors.BLUE_ACCENT_100,
+            on_change=change_error_text_to_None,
+        )
+        def back_to_ely_by(e):
+            page.clean()
+            page.add(setup_text_contai,login_ely_textfield_contai,password_ely_textfield_contai,try_to_login_button)
+        def try_to_login_2FA_on_click(e):
+            temp = mine.ely_by_auth(login=login_ely_textfield.value,passw=password_ely_textfield.value,TOTP=textfield_2FA.value.replace(" ",""))
+            if temp == "2FA correct":
+                page.clean()
+                import launcher_main
+                launcher_main.main_launcher(launcher=page)
+            elif temp == "2FA invalid":
+                page.open(ft.SnackBar(ft.Text(f"Неправильный 2FA ключ"),show_close_icon=True))
+        try_2FA_button_ely = ft.ElevatedButton(
+            text="Подтвердить",
+            color=ft.Colors.BLUE_ACCENT_100,
+            on_click=try_to_login_2FA_on_click,
+        )
+        back_button_ely = ft.ElevatedButton(
+            text="Назад",
+            color=ft.Colors.BLUE_ACCENT_100,
+            on_click=back_to_ely_by,
+        )
+        page.clean()
+        page.add(setup_text_contai,login_ely_textfield_contai,password_ely_textfield_contai,try_to_login_button,back_to_main_menu)
+        
         
     def select_offline(e,animated = False):
+        def back_to_main_menu_on_click(e):
+            page.clean()
+            page.add(main_container)
+            return 0
+        back_to_main_menu = ft.ElevatedButton(
+            text="Назад",
+            on_click=back_to_main_menu_on_click,
+        )
         def is_valid_string(s: str) -> bool:
                 allowed_chars = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-")
                 return all(char in allowed_chars for char in s)
@@ -310,7 +411,7 @@ def hello_page(page: ft.Page):
             animate_opacity=ft.Animation(300, ft.AnimationCurve.EASE_IN)
         )
         setup_text_d.value = ''
-        page.add(nickname_container,setup_text_d_container,setup_nickname_done_container,setup_container)
+        page.add(nickname_container,setup_text_d_container,setup_nickname_done_container,setup_container,back_to_main_menu)
         Timer(0.2, animate_setup).start()
         Timer(1, animate_setup_up).start()
 

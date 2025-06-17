@@ -3,7 +3,7 @@ import subprocess
 import requests
 import os
 import webbrowser
-
+import psutil
 # read_settings() - вспомогательная функция, возращает лист с данными файла(построчно)
 # first_launch() - первый запуск, настраивает файл SettingInfo, возращает 1 когда завершится
 # settings() - меняет настройки в файле SettingInfo, подавать значения которые нужно изменить, возращает 1 когда завершится
@@ -19,13 +19,25 @@ import webbrowser
 #     2 - ник
 #     3 - uuid
 #     4 - use api?  
+def get_ram_in_mb():
+    memory = psutil.virtual_memory()
+    total_memory_mb = memory.total / (1024 * 1024)
+    return round(total_memory_mb)
+
 def get_available_versions():
     res = []
     available_versions = mll.utils.get_version_list()
+    versions = mll.utils.get_installed_versions(".minecraft")
+    installed_versions = []
+    for version in versions:
+        installed_versions.append(version['id'])
     for version in available_versions:
         version_id = version["id"]
         version_type = version["type"]
-        res.append(f'{version_id} ({version_type})')
+        if version_id in installed_versions:
+            res.append(f'{version_id} ({version_type}) [установленно]')
+        else:
+            res.append(f'{version_id} ({version_type}) [не установленно]')
     return res
 def read_settings():
     file = open("resource/data/SettingInfo", "r")
@@ -69,9 +81,13 @@ def ely_by_auth(login=None, passw=None, TOTP=None):
             "password": f'{passw}:{TOTP}'
         }
         response = requests.post(auth_url, json=auth_data)
-            
-        uuid = response.json()['selectedProfile']['id']
-        settings(new_uuid=uuid, use_uuid=True)
+        print(response)
+        try:
+            uuid = response.json()['selectedProfile']['id']
+            settings(new_uuid=uuid, use_uuid=True)
+            return "2FA correct"
+        except KeyError:
+            return "2FA invalid"
         
     else:
         auth_url = f"https://authserver.ely.by/auth/authenticate"
@@ -81,9 +97,14 @@ def ely_by_auth(login=None, passw=None, TOTP=None):
             "password": passw
         }
         response = requests.post(auth_url, json=auth_data)
-
-        if response.status_code == 401: return 'требуется TOPT токен'
-        if response.status_code != 200: return 'ошибка при входе'
+        if response.status_code == 401:  # или 401, зависит от API
+            error_data = response.json()
+            print(error_data.get("error"))
+            if error_data.get("error") == "ForbiddenOperationException" and "two factor auth" in error_data.get("errorMessage", ""):
+                return "2FA protect"
+            elif error_data.get("error") == "ForbiddenOperationException" and "Invalid username or password." in error_data.get("errorMessage", ""):
+                return "Invalid username or password"
+        if response.status_code != 200: return f'НЕИЗВЕСТНАЯ ОШИБКА API: {response}'
             
         uuid = response.json()['selectedProfile']['id']
         settings(new_username=response.json()['selectedProfile']['name'], new_uuid=uuid, use_uuid=True)
@@ -91,12 +112,20 @@ def ely_by_auth(login=None, passw=None, TOTP=None):
 
 
 
-def start(version, core='vanila'):
+def start(version, core='vanila',use_ely_by=True):
     dir, username, uuid, uuid_use = read_settings()
     options = {
         'username': username,
-        'uuid': uuid if uuid_use == 'True' else ''
+        'uuid': uuid if uuid_use == 'True' and use_ely_by else ''
     }
+    try:
+        if tuple(map(int, version.split(".")[:2])) >= (1, 17):  # Проверка версии 1.17+
+            jvm_version = mll.utils.get_required_jvm_version(version)
+            if not mll.utils.is_jvm_version_installed(jvm_version, dir):
+                print(f"Установка JVM {jvm_version}...")
+                mll.install.install_jvm_runtime(jvm_version, dir)
+    except Exception as e:
+        print(f"Ошибка при проверке JVM: {e}")
     if core == 'vanila':
         try:
             subprocess.call(mll.command.get_minecraft_command(version=version, minecraft_directory=dir, options=options))
@@ -150,7 +179,7 @@ def download_version(version='1.20.1', core='vanila'):
         print('начало загрузки')
 
         mll.install.install_minecraft_version(versionid=version, minecraft_directory=dir)
-
+        
         print('успешно')
         return 1
     elif core == 'forge':
