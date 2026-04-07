@@ -1,4 +1,4 @@
-# DiamondPy
+# DiamondPy ( the project was abandoned )
 Small minecraft launcher for python
 
 # Обозначения версий:
